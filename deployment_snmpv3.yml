@@ -1,0 +1,38 @@
+---
+- hosts: ALL
+  become: yes
+  gather_facts: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: Stop SNMP Service
+      service:
+        name: snmpd
+        state: stopped
+    - name: debug
+      setup:
+        filter: ansible_hostname
+      register: _host_name
+    - name: get file stat
+      local_action: stat path=/etc/snmp/snmpd.conf.ori
+      register: file
+    - name: move file snmpd.conf
+      copy:
+        remote_src: yes
+        src: /etc/snmp/snmpd.conf
+        dest: /etc/snmp/snmpd.conf.ori
+      when: not file.stat.exists
+    - name: create and fill in the file
+      copy:
+        dest: /etc/snmp/snmpd.conf
+        content: >
+          agentAddress udp:161,udp6:[::1]:161
+          rouser usersnmpv3
+    - name: user_snmpv3
+      lineinfile:
+        dest: /var/lib/snmp/snmpd.conf
+        line: createUser usersnmpv3 SHA MOTDEPASSE AES PASSPHRASE
+    - name: Start SNMP Service
+      service:
+        name: snmpd
+        state: started
