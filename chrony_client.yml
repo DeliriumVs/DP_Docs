@@ -1,0 +1,38 @@
+---
+- name: chrony client
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Installer le paquet chrony
+      apt:
+        name: chrony
+        state: present
+        update_cache: yes
+
+    - name: Configurer Chrony pour utiliser le serveur de temps 192.168.10.200
+      lineinfile:
+        path: /etc/chrony/chrony.conf
+        regexp: '^server '
+        line: 'server 192.168.10.200 iburst'
+        state: present
+        backup: yes
+
+    - name: S'assurer que le service chrony est activé et démarré
+      service:
+        name: chrony
+        state: started
+        enabled: yes
+
+    - name: Synchroniser l'heure immédiatement
+      command: chronyc -a makestep
+      when: ansible_facts['distribution'] == "Debian"
+
+    - name: Vérifier le statut de synchronisation
+      command: chronyc tracking
+      register: chrony_status
+
+    - name: Afficher le statut de synchronisation
+      debug:
+        var: chrony_status.stdout
+
